@@ -7,18 +7,24 @@ __pycache__/
 # Virtual env
 .venv/
 
-# Model/data/artifacts
-checkpoints/
-ref/
-ref_cache/
-out/
-run_logs/
+# Model/data/artifacts (keep empty directory placeholders)
+checkpoints/*
+!checkpoints/.gitkeep
+ref/*
+!ref/.gitkeep
+ref_cache/*
+!ref_cache/.gitkeep
+out/*
+!out/.gitkeep
+run_logs/*
+!run_logs/.gitkeep
 
 # Local temp/cache
 .tmp_pip/
 .tmp_wheels_test/
 .openclaw_voice_state.json
-logs/
+logs/*
+!logs/.gitkeep
 
 # Local tools and binaries
 sox-14-4-2/

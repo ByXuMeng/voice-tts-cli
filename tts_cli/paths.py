@@ -4,14 +4,15 @@ import logging
 from pathlib import Path
 
 from .constants import MODEL_ALIASES, SUPPORTED_AUDIO_EXTS
+from .fs_utils import resolve_user_path
 
 
-def resolve_model_path(model: str, model_path: str | None, script_dir: Path) -> Path:
+def resolve_model_path(model: str, model_path: str | None, project_root: Path) -> Path:
     """根据模型别名或 --model-path 解析本地模型目录。"""
     if model_path:
-        p = Path(model_path).expanduser().resolve()
+        p = resolve_user_path(model_path, project_root)
     else:
-        p = script_dir / "checkpoints" / MODEL_ALIASES[model]
+        p = project_root / "checkpoints" / MODEL_ALIASES[model]
     if not p.exists():
         raise FileNotFoundError(f"Model path not found: {p}")
     return p
@@ -26,7 +27,7 @@ def list_ref_audios(ref_dir: Path) -> list[Path]:
     return files
 
 
-def resolve_ref_audio_path(ref_audio: str, script_dir: Path, logger: logging.Logger) -> Path:
+def resolve_ref_audio_path(ref_audio: str, project_root: Path, logger: logging.Logger) -> Path:
     """解析参考音频路径，支持绝对路径、相对路径和 ./ref 文件名。"""
     raw = Path(ref_audio).expanduser()
     if raw.is_absolute() and raw.exists():
@@ -34,12 +35,11 @@ def resolve_ref_audio_path(ref_audio: str, script_dir: Path, logger: logging.Log
 
     candidates = [
         (Path.cwd() / raw).resolve(),
-        (script_dir / raw).resolve(),
-        (script_dir / "ref" / raw.name).resolve(),
+        (project_root / raw).resolve(),
+        (project_root / "ref" / raw.name).resolve(),
     ]
     for c in candidates:
         if c.exists():
             return c
     logger.warning("Reference audio not found from input: %s", ref_audio)
     raise FileNotFoundError(f"Reference audio not found: {ref_audio}")
-

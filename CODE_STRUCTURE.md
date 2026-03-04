@@ -7,12 +7,10 @@
 ```text
 E:\AITools\voice
 ├─ qwen3_tts_cli.py
+├─ README.md
 ├─ QWEN3_TTS_CLI_USAGE.md
 ├─ CODE_STRUCTURE.md
 ├─ checkpoints/
-│  ├─ Qwen3-TTS-12Hz-0.6B-Base/
-│  ├─ Qwen3-TTS-12Hz-1.7B-Base/
-│  └─ Qwen3-TTS-12Hz-1.7B-VoiceDesign/
 ├─ ref/
 ├─ ref_cache/
 ├─ run_logs/
@@ -23,7 +21,9 @@ E:\AITools\voice
    ├─ args.py
    ├─ bootstrap.py
    ├─ logging_utils.py
+   ├─ fs_utils.py
    ├─ paths.py
+   ├─ text_io.py
    ├─ runtime.py
    └─ cache.py
 ```
@@ -31,99 +31,92 @@ E:\AITools\voice
 ## 2. 主入口文件
 
 ### `qwen3_tts_cli.py`
-- CLI 主入口，负责“流程编排”。
+- CLI 主入口，负责流程编排。
 - 主要步骤：
-  1. 虚拟环境引导（自动切到 `.venv`）。
-  2. 解析参数。
-  3. 初始化日志。
-  4. 解析模型路径与运行参数。
-  5. 加载模型并执行生成。
-  6. 保存音频、输出耗时与日志路径。
-- 不承担复杂业务细节，细节全部下沉到 `tts_cli/`。
+  1. 虚拟环境引导（自动切到 `.venv`）
+  2. 解析参数
+  3. 解析文本输入（`--text` 或 `--text-file`）
+  4. 加载模型并生成音频
+  5. 保存输出与日志
 
 ## 3. 模块职责（`tts_cli/`）
 
-### `tts_cli/constants.py`
+### `constants.py`
 - 全局常量：
-  - `MODEL_ALIASES`：模型别名到目录名映射。
-  - `SUPPORTED_AUDIO_EXTS`：参考音频支持格式。
+  - `MODEL_ALIASES`
+  - `SUPPORTED_AUDIO_EXTS`
 
-### `tts_cli/args.py`
+### `args.py`
 - 命令行参数定义与解析。
-- 包含模型选择、日志参数、速度档位、参考音频缓存参数等。
+- 关键参数包括：
+  - 文本输入：`--text` / `--text-file`（二选一）
+  - 参考缓存：默认开启，可用 `--disable-ref-cache` 关闭
+  - 速度档位：`--speed-mode`
 
-### `tts_cli/bootstrap.py`
+### `bootstrap.py`
 - 运行环境引导。
 - 若当前 Python 不是项目 `.venv`，自动重启到 `.venv\Scripts\python.exe`。
 
-### `tts_cli/logging_utils.py`
-- 日志系统初始化。
-- 采用“按模型固定文件名 + 每次覆写”的策略：
-  - `qwen3_tts_0.6b-base.log`
-  - `qwen3_tts_1.7b-base.log`
-  - `qwen3_tts_1.7b-voicedesign.log`
+### `logging_utils.py`
+- 日志初始化。
+- 按模型固定日志文件名并覆盖写入。
 
-### `tts_cli/paths.py`
-- 路径相关逻辑：
-  - 解析模型目录（默认 `checkpoints/...`）。
-  - 列出 `ref/` 可用参考音频。
-  - 解析参考音频路径（绝对/相对/仅文件名）。
+### `paths.py`
+- 路径解析：
+  - 模型目录
+  - `ref/` 参考音频
+  - 参考音频路径（绝对/相对/文件名）
 
-### `tts_cli/runtime.py`
-- 运行时性能与生成参数策略：
-  - dtype 选择（CPU 自动回退 `float32`）。
-  - `speed-mode` 档位参数注入（`fast/balanced/quality`）。
-  - CUDA 推理优化开关（TF32、cudnn benchmark 等）。
+### `fs_utils.py`
+- 项目根目录与用户路径解析：
+  - `--project-root`
+  - `VOICE_TTS_ROOT` / `VOICE_TTS_HOME`
+  - 相对路径统一锚定到项目根目录
 
-### `tts_cli/cache.py`
-- Base 模型参考音频热加载缓存。
-- 关键能力：
-  - 生成稳定缓存键（模型 + 参考音频 + 参数）。
-  - 首次冷加载创建缓存，后续命中热加载。
-  - 缓存对象安全序列化（兼容 PyTorch 2.6+ `weights_only` 行为）。
+### `text_io.py`
+- 文本输入解析：
+  - 直接文本
+  - 文本文件读取（utf-8-sig / utf-8 / gb18030 自动尝试）
 
-## 4. 运行时数据目录
+### `runtime.py`
+- 运行时优化与生成参数策略：
+  - dtype 选择
+  - speed profile 默认参数
+  - CUDA 性能开关（TF32、cudnn benchmark）
+
+### `cache.py`
+- Base 模型参考 prompt 缓存：
+  - 冷启动构建缓存
+  - 热加载命中缓存
+  - 安全序列化与旧格式兼容
+
+## 4. 运行数据目录
 
 ### `checkpoints/`
-- 本地模型权重目录（3 个模型）。
+- 本地模型权重目录。
 
 ### `ref/`
 - 参考音频目录（Base 模型常用）。
 
 ### `ref_cache/`
 - 参考 prompt 缓存目录。
-- 命中时可减少参考音频预处理时间。
 
 ### `run_logs/`
-- 每模型一份固定日志，重复运行会覆写同模型日志文件。
+- 固定模型日志目录。
 
 ### `out/`
-- 生成的音频输出目录。
+- 生成音频输出目录。
 
-## 5. 关键执行流程（Base 模型）
+## 5. 关键流程（Base 模型）
 
-1. 读取参数与模型路径。  
-2. 加载模型。  
-3. 解析 `ref-audio`。  
-4. 若开启 `--enable-ref-cache`：
-   - 先查 `ref_cache` 是否命中。
-   - 未命中则从参考音频构建 prompt 并写缓存。
-5. 调用 `generate_voice_clone(...)` 生成音频。  
-6. 写入 `out/*.wav`，日志记录总耗时。  
+1. 解析文本输入（`--text` 或 `--text-file`）  
+2. 解析参考音频路径  
+3. 默认自动启用参考缓存（除非 `--disable-ref-cache`）  
+4. 调用 `generate_voice_clone(...)` 生成音频  
+5. 输出 wav 与日志  
 
-## 6. 关键执行流程（VoiceDesign 模型）
+## 6. 关键流程（VoiceDesign 模型）
 
-1. 读取参数与模型路径。  
-2. 加载模型。  
-3. 使用 `text + instruct (+ language)` 调用 `generate_voice_design(...)`。  
-4. 写入 `out/*.wav`，日志记录总耗时。  
-
-## 7. 维护建议
-
-1. 新增参数优先放在 `tts_cli/args.py`，并在 `qwen3_tts_cli.py` 显式编排使用。  
-2. 运行时优化策略统一在 `tts_cli/runtime.py` 管理，避免分散在主流程。  
-3. 缓存键逻辑若变更，优先修改 `tts_cli/cache.py` 的 `build_ref_cache_path`。  
-4. 说明文档同步维护：
-   - `QWEN3_TTS_CLI_USAGE.md`
-   - `CODE_STRUCTURE.md`
-
+1. 解析文本输入（`--text` 或 `--text-file`）  
+2. 使用 `text + instruct (+ language)` 调用 `generate_voice_design(...)`  
+3. 输出 wav 与日志  

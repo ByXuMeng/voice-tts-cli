@@ -4,11 +4,12 @@ import logging
 import sys
 from pathlib import Path
 
+from .fs_utils import resolve_user_path
 
-def setup_logger(log_dir: str, level: str, model_alias: str) -> tuple[logging.Logger, Path]:
+def setup_logger(log_dir: str, level: str, model_alias: str, project_root: Path) -> tuple[logging.Logger, Path]:
     """创建日志器，按模型固定日志文件名并在每次运行时覆盖旧日志。"""
     log_filename = f"qwen3_tts_{model_alias}.log"
-    log_path = Path(log_dir).expanduser().resolve() / log_filename
+    log_path = resolve_user_path(log_dir, project_root) / log_filename
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("qwen3_tts_cli")
@@ -31,4 +32,3 @@ def setup_logger(log_dir: str, level: str, model_alias: str) -> tuple[logging.Lo
     logger.addHandler(stream_handler)
 
     return logger, log_path
-

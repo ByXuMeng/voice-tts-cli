@@ -17,9 +17,10 @@ run_logs/
 # Local temp/cache
 .tmp_pip/
 .tmp_wheels_test/
+.openclaw_voice_state.json
+logs/
 
 # Local tools and binaries
 sox-14-4-2/
 tools/
 cuda_junction/
-
